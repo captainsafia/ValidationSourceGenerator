@@ -11,10 +11,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "samples", "samples", "{38D6
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SampleApp", "samples\SampleApp\SampleApp.csproj", "{C94D39AA-4E78-4B44-8D97-4BD116F9A2D6}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Roslyn.Reflection", "Roslyn.Reflection", "{EC8D2362-3244-43DB-A1E6-E87D5E858FAD}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Roslyn.Reflection", "Roslyn.Reflection\Roslyn.Reflection\Roslyn.Reflection.csproj", "{36B07DD1-A352-4C05-ACE0-37B2DBEFCC31}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -36,13 +32,8 @@ Global
 		{C94D39AA-4E78-4B44-8D97-4BD116F9A2D6}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C94D39AA-4E78-4B44-8D97-4BD116F9A2D6}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{C94D39AA-4E78-4B44-8D97-4BD116F9A2D6}.Release|Any CPU.Build.0 = Release|Any CPU
-		{36B07DD1-A352-4C05-ACE0-37B2DBEFCC31}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{36B07DD1-A352-4C05-ACE0-37B2DBEFCC31}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{36B07DD1-A352-4C05-ACE0-37B2DBEFCC31}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{36B07DD1-A352-4C05-ACE0-37B2DBEFCC31}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{C94D39AA-4E78-4B44-8D97-4BD116F9A2D6} = {38D69C02-BE49-4800-9E55-9E27F0D381DA}
-		{36B07DD1-A352-4C05-ACE0-37B2DBEFCC31} = {EC8D2362-3244-43DB-A1E6-E87D5E858FAD}
 	EndGlobalSection
 EndGlobal

@@ -12,7 +12,7 @@ public static class TestHelper
     public static Task Verify(params string[] sources)
     {
         // Parse the provided string into a C# syntax tree
-        var syntaxTrees = sources.Select(source => CSharpSyntaxTree.ParseText(source));
+        var syntaxTrees = sources.Select(source => CSharpSyntaxTree.ParseText(source, path: $"{Guid.NewGuid()}.cs"));
         var references = new List<PortableExecutableReference>
         {
             MetadataReference.CreateFromFile(typeof(Microsoft.AspNetCore.Builder.IEndpointConventionBuilder).Assembly.Location),
@@ -20,6 +20,7 @@ public static class TestHelper
             MetadataReference.CreateFromFile(typeof(Microsoft.AspNetCore.Http.EndpointFilterExtensions).Assembly.Location),
             MetadataReference.CreateFromFile(typeof(Microsoft.AspNetCore.Http.EndpointFilterDelegate).Assembly.Location),
             MetadataReference.CreateFromFile(typeof(Microsoft.Extensions.Hosting.IHost).Assembly.Location),
+            MetadataReference.CreateFromFile(typeof(Microsoft.AspNetCore.Http.Results).Assembly.Location),
         };
         references.AddRange(Net70.References.All);
 
