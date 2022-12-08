@@ -30,7 +30,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\SourceGeneratorTemplate\SourceGeneratorTemplate.csproj" />
+    <ProjectReference Include="..\ValidationsGenerator\ValidationsGenerator.csproj" />
   </ItemGroup>
   
   <ItemGroup>

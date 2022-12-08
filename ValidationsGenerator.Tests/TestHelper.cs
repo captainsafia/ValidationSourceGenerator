@@ -5,7 +5,7 @@ using Microsoft.CodeAnalysis.Diagnostics;
 using Basic.Reference.Assemblies;
 
 
-namespace SourceGeneratorTemplate.Tests;
+namespace ValidationsGenerator.Tests;
 
 public static class TestHelper
 {

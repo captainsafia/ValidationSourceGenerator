@@ -1,7 +1,7 @@
 using System.Runtime.CompilerServices;
 using VerifyTests;
 
-namespace SourceGeneratorTemplate.Tests;
+namespace ValidationsGenerator.Tests;
 
 public static class ModuleInitializer
 {

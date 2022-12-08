@@ -1,4 +1,4 @@
-namespace SourceGeneratorTemplate.Tests;
+namespace ValidationsGenerator.Tests;
 
 [UsesVerify]
 public class SourceGeneratorTests
