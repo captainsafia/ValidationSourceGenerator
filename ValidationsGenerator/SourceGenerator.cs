@@ -6,6 +6,7 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Operations;
 using Roslyn.Reflection;
+using ValidationsGenerator;
 
 [Generator]
 public class SourceGenerator : IIncrementalGenerator
@@ -56,18 +57,9 @@ public class SourceGenerator : IIncrementalGenerator
             var methodInfo = method.AsMethodInfo(metadataLoadContext);
             var parameters = methodInfo.GetParameters();
             var filePath = operation.Syntax.SyntaxTree.FilePath;
-            var span = operation.Syntax.SyntaxTree.GetLineSpan(operation.Syntax.Span);
-            var lineNumber = span.StartLinePosition.Line + 1;
+            var span = operation.Syntax.SyntaxTree.GetLineSpan(operation.Syntax.Parent.Span);
+            var lineNumber = span.EndLinePosition.Line + 1;
             return (filePath, lineNumber, parameters);
-        });
-
-        // Find the parameters that are validatable because they have attributes at the top-level.
-        // Like ([MinLength(3] string foo)
-        var parametersWithTopLevelValidations = parametersWithSpanInfo.Select((sources, _) =>
-        {
-            var (filePath, lineNumber, parameters) = sources;
-            return (filePath, lineNumber,
-                parameters.Where(parameter => IsParameterWithTopLevelValidations(parameter) is true));
         });
 
         // Get the parameters that are validatable because they are types that
@@ -135,25 +127,40 @@ public class SourceGenerator : IIncrementalGenerator
         {
             var code = new StringBuilder();
             var codeWriter = new CodeWriter(code);
-            foreach (var type in types)
+            var groupedTypes = types.GroupBy(type => type.ElementType);
+            foreach (var groupedType in groupedTypes)
             {
-                codeWriter.WriteLine($"public static void Validate({type.ElementType} value, ref List<ValidationResult> results)");
+                var elementType = groupedType.Key;
+                codeWriter.WriteLine($"public static void Validate({elementType} value, ref List<ValidationResult> results)");
                 codeWriter.WriteLine("{");
                 codeWriter.Indent();
+                codeWriter.WriteLine($"if (value.GetType() != typeof({elementType}))");
+                codeWriter.WriteLine("{");
+                codeWriter.Indent();
+                codeWriter.Write($@"throw new Exception($""Expected to validate {elementType} but got {{value.GetType()}}"");");
+                codeWriter.Unindent();
+                codeWriter.WriteLine("}");
                 codeWriter.WriteLine("var validationContext = new ValidationContext(value);");
-                var attributes = type.Attributes;
-                foreach (var attribute in attributes)
+                foreach (var type in groupedType)
                 {
-                    var validatorName = $"{type.ElementType}_{type.Property.Name}_{attribute.AttributeClass.Name}";
-                    codeWriter.WriteLine($@"validationContext.MemberName = ""{type.ElementType.Name}.{type.Property.Name}"";");
-                    codeWriter.WriteLine($@"validationContext.DisplayName = ""{type.ElementType.Name}.{type.Property.Name}"";");
-                    codeWriter
-                        .WriteLine($@"results.Add({validatorName}.GetValidationResult(value.{type.Property.Name}, validationContext));");
+                    var attributes = type.Attributes;
+                    foreach (var attribute in attributes)
+                    {
+                        var validatorName = $"{elementType}_{type.Property.Name}_{attribute.AttributeClass.Name}";
+                        codeWriter.WriteLine(
+                            $@"validationContext.MemberName = ""{elementType.Name}.{type.Property.Name}"";");
+                        codeWriter.WriteLine(
+                            $@"validationContext.DisplayName = ""{elementType.Name}.{type.Property.Name}"";");
+                        codeWriter
+                            .WriteLine(
+                                $@"results.Add({validatorName}.GetValidationResult(value.{type.Property.Name}, validationContext));");
+                    }
                 }
+
                 codeWriter.Unindent();
                 codeWriter.Write("}");
                 
-                codeWriter.WriteLine($"public static void Validate(IEnumerable<{type.ElementType}> values, ref List<ValidationResult> results)");
+                codeWriter.WriteLine($"public static void Validate(IEnumerable<{elementType}> values, ref List<ValidationResult> results)");
                 codeWriter.WriteLine("{");
                 codeWriter.Indent();
                 codeWriter.WriteLine("var validationContext = new ValidationContext(values);");
@@ -161,14 +168,22 @@ public class SourceGenerator : IIncrementalGenerator
                 codeWriter.WriteLine("foreach (var value in values)");
                 codeWriter.WriteLine("{");
                 codeWriter.Indent();
-                foreach (var attribute in attributes)
+                foreach (var type in groupedType)
                 {
-                    var validatorName = $"{type.ElementType}_{type.Property.Name}_{attribute.AttributeClass.Name}";
-                    codeWriter.WriteLine($@"validationContext.MemberName = $""{type.ElementType.Name}[{{index}}].{type.Property.Name}"";");
-                    codeWriter.WriteLine($@"validationContext.DisplayName = $""{type.ElementType.Name}[{{index}}].{type.Property.Name}"";");
-                    codeWriter
-                        .WriteLine($@"results.Add({validatorName}.GetValidationResult(value.{type.Property.Name}, validationContext));");
+                    var attributes = type.Attributes;
+                    foreach (var attribute in attributes)
+                    {
+                        var validatorName = $"{type.ElementType}_{type.Property.Name}_{attribute.AttributeClass.Name}";
+                        codeWriter.WriteLine(
+                            $@"validationContext.MemberName = $""{type.ElementType.Name}[{{index}}].{type.Property.Name}"";");
+                        codeWriter.WriteLine(
+                            $@"validationContext.DisplayName = $""{type.ElementType.Name}[{{index}}].{type.Property.Name}"";");
+                        codeWriter
+                            .WriteLine(
+                                $@"results.Add({validatorName}.GetValidationResult(value.{type.Property.Name}, validationContext));");
+                    }
                 }
+
                 codeWriter.WriteLine("index++;");
                 codeWriter.Unindent();
                 codeWriter.WriteLine("}");
@@ -194,47 +209,6 @@ public class SourceGenerator : IIncrementalGenerator
             
             context.AddSource("Validation.ValidationTypeMethods.g.cs", code.ToString());
         });
-        
-
-        var parameterWithTopLevelValidationsCode = parametersWithTopLevelValidations.Select((input, _) =>
-        {
-            var (filePath, lineNumber, parameters) = input;
-            var code =
-                $@"[(""{filePath}"", {lineNumber})] = (EndpointFilterInvocationContext context, int index) =>
-";
-            code += "{\n";
-            code += "var results = new List<ValidationResult>();\n";
-            foreach (var parameter in parameters)
-            {
-                var attributes =
-                    parameter.CustomAttributes.Where(attr =>
-                                                         attr.AttributeType.BaseType.Name
-                                                             .Contains("ValidationAttribute"));
-                code += $@"
-var {parameter.Name} = context.GetArgument<{parameter.ParameterType}>(index);
-var validationContext = new ValidationContext({parameter.Name});
-validationContext.MemberName = ""{parameter.Name}"";
-validationContext.DisplayName = ""{parameter.Name}"";
-";
-                foreach (var attr in attributes)
-                {
-                    var validatorName = $"{parameter.Name}_{attr.AttributeType.Name}";
-                    var parens = attr.ConstructorArguments.Count > 0
-                        ? $"({string.Join(",", attr.ConstructorArguments.Select(arg => arg.Value))})"
-                        : "()";
-                    code += $@"
-var {validatorName} = new {attr.AttributeType.FullName}{parens};
-results.Add({validatorName}.GetValidationResult({parameter.Name}, validationContext));
-";
-                }
-            }
-
-            code += "return results;\n";
-            code += "},\n";
-
-            return code;
-        });
-
 
         // For each validatable parameter, generate a syntax tree that represents the invocations to the underlying
         // validate calls.
@@ -250,11 +224,30 @@ results.Add({validatorName}.GetValidationResult({parameter.Name}, validationCont
             codeWriter.Indent();
             codeWriter.WriteLine("var results = new List<ValidationResult>();");
             var parameterIndex = 0;
-            // codeWriter.WriteLine($@"results.AddRange(Validations.Methods[(""{filePath}"", {lineNumber})](context, {parameterIndex}));");
             foreach (var parameter in parameters)
             {
                 codeWriter.WriteLine($"var {parameter.Name} = context.GetArgument<{parameter.ParameterType}>({parameterIndex});");
-                codeWriter.WriteLine($"Validations.Validate({parameter.Name}, ref results);");
+                if (parameter.TryGetTopLevelValidations(out var topLevelAttributes))
+                {
+                    codeWriter.WriteLine($"var validationContext = new ValidationContext({parameter.Name});");
+                    codeWriter.WriteLine(
+                        $@"validationContext.MemberName = ""{parameter.Name}"";");
+                    codeWriter.WriteLine(
+                        $@"validationContext.DisplayName = ""{parameter.Name}"";");
+                    foreach (var attribute in topLevelAttributes)
+                    {
+                        var validatorName = $"{parameter.Name}_{attribute.AttributeType.Name}";
+                        var constructorArgs = attribute.ConstructorArguments.Count > 0
+                            ? $"({string.Join(",", attribute.ConstructorArguments.Select(arg => arg.Value))})"
+                            : "()";
+                        codeWriter.WriteLine($"var {validatorName} = new {attribute.AttributeType.FullName}{constructorArgs};");
+                        codeWriter.WriteLine($"results.Add({validatorName}.GetValidationResult({parameter.Name}, validationContext));");
+                    }
+                }
+                else
+                {
+                    codeWriter.WriteLine($"Validations.Validate({parameter.Name}, ref results);");
+                }
                 parameterIndex++;
             }
             
@@ -295,13 +288,14 @@ results.Add({validatorName}.GetValidationResult({parameter.Name}, validationCont
              codeWriter.WriteLine("using System.Threading.Tasks;");
              codeWriter.WriteLine("using Microsoft.AspNetCore.Http;");
              codeWriter.WriteLine("using System.ComponentModel.DataAnnotations;");
+             codeWriter.WriteLine("using System.Runtime.CompilerServices;");
              codeWriter.WriteLine("public static partial class Validations");
              codeWriter.WriteLine("{");
              codeWriter.Indent();
-             codeWriter.WriteLine("public static TBuilder WithValidation<TBuilder>(this TBuilder builder, (string, int) key) where TBuilder : IEndpointConventionBuilder");
+             codeWriter.WriteLine(@"public static TBuilder WithValidation<TBuilder>(this TBuilder builder, [CallerFilePath] string filePath = """", [CallerLineNumber] int lineNumber = 0) where TBuilder : IEndpointConventionBuilder");
              codeWriter.WriteLine("{");
              codeWriter.Indent();
-             codeWriter.WriteLine("builder.AddEndpointFilter(Validations.Map[key]);");
+             codeWriter.WriteLine("builder.AddEndpointFilter(Validations.Map[(filePath, lineNumber)]);");
              codeWriter.WriteLine("return builder;");
              codeWriter.Unindent();
              codeWriter.WriteLine("}");
@@ -433,6 +427,8 @@ public class TypeAnnotations
 
     public override bool Equals(object o)
     {
-        return o is TypeAnnotations otherTypeAnnotation && otherTypeAnnotation.ElementType == ElementType;
+        return o is TypeAnnotations otherTypeAnnotation &&
+               otherTypeAnnotation.ElementType == ElementType &&
+               otherTypeAnnotation.Property.Name == Property.Name;
     }
 }

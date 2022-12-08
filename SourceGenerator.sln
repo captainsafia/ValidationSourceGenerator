@@ -3,9 +3,9 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SourceGeneratorTemplate", "SourceGeneratorTemplate\SourceGeneratorTemplate.csproj", "{95219C19-76AF-4289-A763-C7884C515AB0}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ValidationsGenerator", "ValidationsGenerator\ValidationsGenerator.csproj", "{95219C19-76AF-4289-A763-C7884C515AB0}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SourceGeneratorTemplate.Tests", "SourceGeneratorTemplate.Tests\SourceGeneratorTemplate.Tests.csproj", "{0C6076A3-DDFC-4380-8DAA-092A6FC4F8AE}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ValidationsGenerator.Tests", "ValidationsGenerator.Tests\ValidationsGenerator.Tests.csproj", "{0C6076A3-DDFC-4380-8DAA-092A6FC4F8AE}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "samples", "samples", "{38D69C02-BE49-4800-9E55-9E27F0D381DA}"
 EndProject

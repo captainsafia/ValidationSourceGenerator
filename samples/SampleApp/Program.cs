@@ -5,31 +5,27 @@ var todos = new List<Todo>();
 
 // Validating a single complex parameter
 app.MapPost("/todo", (Todo todo) => todos.Add(todo))
-.WithValidation((
-    "/Users/captainsafia/github.com/ValidationSourceGenerator/samples/SampleApp/Program.cs", 7));
+    .WithValidation();
 
 // Validate a single simple parameter
 app.MapPost("/todo/{id}", ([Required] [Range(1, int.MaxValue)] int id) => todos.SingleOrDefault(todo => todo.Id == id))
-.WithValidation(("/Users/captainsafia/github.com/ValidationSourceGenerator/samples/SampleApp/Program.cs", 12));
+    .WithValidation();
 
 // // Validate two parameters, one simple and one complex
 app.MapPut("/todo/{id}", ([Required] [Range(1, int.MaxValue)] int id, Todo todo) =>
-{
-    var index = todos.FindIndex(todo => todo.Id == id);
-    todos[index] = todo;
-})
-.WithValidation(("/Users/captainsafia/github.com/ValidationSourceGenerator/samples/SampleApp/Program.cs", 16));
+    {
+        var index = todos.FindIndex(todo => todo.Id == id);
+        todos[index] = todo;
+    })
+    .WithValidation();
 
 // Validate with IEnumerable types
 app.MapPost("/todos", (List<Todo> todosIn) => todos.AddRange(todosIn))
-.WithValidation(("/Users/captainsafia/github.com/ValidationSourceGenerator/samples/SampleApp/Program.cs", 24));
+    .WithValidation();
 
 // Validate with polymorphic types
 app.MapPost("/todos-with-project", (TodoWithProject todosIn) => todos.Add(todosIn))
-    .WithValidation(("/Users/captainsafia/github.com/ValidationSourceGenerator/samples/SampleApp/Program.cs", 28));
-
-
-
+    .WithValidation();
 
 // Validate with IValidatableObjects
 
