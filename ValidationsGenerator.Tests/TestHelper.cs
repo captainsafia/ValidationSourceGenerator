@@ -40,7 +40,7 @@ public static class TestHelper
         driver = driver.RunGeneratorsAndUpdateCompilation(compilation, out var updatedCompilation,
             out var outputDiagnostics);
         var diagnostics = updatedCompilation.GetDiagnostics();
-        Assert.Empty(diagnostics.Where(d => d.Severity > DiagnosticSeverity.Info));
+        Assert.Empty(diagnostics.Where(d => d.Severity > DiagnosticSeverity.Warning));
         Assert.True(outputDiagnostics.IsEmpty);
 
         // Use verify to snapshot test the source generator output!

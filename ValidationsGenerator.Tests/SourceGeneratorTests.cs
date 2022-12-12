@@ -26,7 +26,7 @@ app.MapPost("/todo", (TodoWithProject todo) => todos.Add(todo))
 
 app.Run();
 
-class Todo
+public class Todo
 {
     [Required, Range(1, int.MaxValue)]
     public int Id { get; set; }
@@ -35,7 +35,7 @@ class Todo
     public bool IsCompleted { get; set; }
 }
 
-class TodoWithProject : Todo
+public class TodoWithProject : Todo
 {
     [Required]
     [MinLength(6)]
@@ -56,44 +56,12 @@ using Microsoft.AspNetCore.Builder;
 
 var app = WebApplication.Create();
 
-app.MapPost("/todo", ([Required, Range(1, int.MaxValue)]int todo) => id)
+app.MapPost("/todo", ([Required, Range(1, int.MaxValue)] int id) => id)
     .WithValidation();
 
 app.Run();
 """;
-        var validationBuilderExtensions = """
-using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Http;
-using System.Linq;
-
-public static class ValidationBuilderExtensions
-{
-    public static TBuilder WithValidation<TBuilder>(this TBuilder builder) where TBuilder : IEndpointConventionBuilder
-    {
-        builder.Add(bud =>
-        {
-            if (bud.Metadata.OfType<SourceKey>().FirstOrDefault() is { } key)
-            {
-                builder.AddEndpointFilter(ValidationLookups.Map[key]);
-            }
-        });
-        return builder;
-    }
-}
-""";
-        var validationLookups = """
-#nullable enable
-using System;
-using Microsoft.AspNetCore.Http;
-using System.Threading.Tasks;
-
-public record SourceKey(string Path, int Line);
-
-public static partial class ValidationLookups
-{
-
-}
-""";
-        return TestHelper.Verify(source, validationBuilderExtensions, validationLookups);
+        
+        return TestHelper.Verify(source);
     }
 }
