@@ -4,7 +4,6 @@ using Xunit.Abstractions;
 
 namespace ValidationsGenerator.Tests;
 
-[UsesVerify]
 public class SourceGeneratorTests : TestBase
 {
     public SourceGeneratorTests(ITestOutputHelper testOutputHelper)

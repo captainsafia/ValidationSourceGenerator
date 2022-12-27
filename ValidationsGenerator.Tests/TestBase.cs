@@ -60,7 +60,6 @@ public class TestBase
         Assert.Empty(diagnostics.Where(d => d.Severity > DiagnosticSeverity.Warning));
         Assert.True(outputDiagnostics.IsEmpty);
 
-        // Use verify to snapshot test the source generator output!
         return updatedCompilation;
     }
 
