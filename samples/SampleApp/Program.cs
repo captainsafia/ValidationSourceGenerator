@@ -2,6 +2,7 @@
 
 var app = WebApplication.Create();
 var todos = new List<Todo>();
+var projects = new List<Project>();
 
 // Validating a single complex parameter
 app.MapPost("/todo", (Todo todo) => todos.Add(todo))
@@ -27,6 +28,13 @@ app.MapPost("/todos", (List<Todo> todosIn) => todos.AddRange(todosIn))
 app.MapPost("/todos-with-project", (TodoWithProject todosIn) => todos.Add(todosIn))
     .WithValidation();
 
+// Validate with recursive types
+app.MapPost("/projects", (Project project) =>
+{
+    projects.Add(project);
+    return Results.Ok(project);
+});
+
 // Validate with IValidatableObjects
 
 
@@ -49,4 +57,28 @@ public class TodoWithProject : Todo
     [Required]
     [MinLength(6)]
     public string Project { get; set; } = string.Empty;
+}
+
+public class TodoList
+{
+    public string ListName { get; set; }
+    [EmailAddress]
+    public string OwnerEmail { get; set; }
+    public List<Todo> Tasks { get; set; }
+}
+
+public class Board
+{
+    public string BoardName { get; set; }
+    [Phone]
+    public string BoardContact { get; set; }
+    public List<TodoList> TodoLists { get; set; }
+}
+
+public class Project
+{
+    public string ProjectName { get; set; }
+    [Url]
+    public string ProjectUrl { get; set; }
+    public List<Board> Boards { get; set; }
 }

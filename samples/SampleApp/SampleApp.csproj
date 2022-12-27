@@ -6,10 +6,20 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
+    <CompilerGeneratedFilesOutputPath>GeneratedOutput</CompilerGeneratedFilesOutputPath>
   </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Remove="$(CompilerGeneratedFilesOutputPath)/**/*.cs" />
+  </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\..\ValidationsGenerator\ValidationsGenerator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
   </ItemGroup>
+
+  <Target Name="RemoveDirectories" AfterTargets="Build">
+    <RemoveDir Directories="$(CompilerGeneratedFilesOutputPath)/Microsoft.Interop.JavaScript.JSImportGenerator" />
+    <RemoveDir Directories="$(CompilerGeneratedFilesOutputPath)/Microsoft.Interop.LibraryImportGenerator" />
+  </Target>
 
 </Project>
