@@ -18,11 +18,17 @@ public static partial class Validations
     }
     public static readonly System.Collections.Generic.Dictionary<(string, int), Func<EndpointFilterInvocationContext, EndpointFilterDelegate, ValueTask<object?>>> Map = new()
     {
-        [("19d186c1-f77d-4740-ba45-4978cd9c577a.cs", 19)] = async (EndpointFilterInvocationContext context, EndpointFilterDelegate next) =>
+        [("246df75c-ea41-4db2-8594-bbc25ba37b5d.cs", 23)] = async (EndpointFilterInvocationContext context, EndpointFilterDelegate next) =>
         {
             var results = new List<ValidationResult>();
-            var todo = context.GetArgument<Todo>(0);
-            Validations.Validate(todo, ref results);
+            var id = context.GetArgument<int>(0);
+            var validationContext = new ValidationContext(id);
+            validationContext.MemberName = "id";
+            validationContext.DisplayName = "id";
+            var id_RequiredAttribute = new System.ComponentModel.DataAnnotations.RequiredAttribute();
+            results.Add(id_RequiredAttribute.GetValidationResult(id, validationContext));
+            var id_RangeAttribute = new System.ComponentModel.DataAnnotations.RangeAttribute(1,2147483647);
+            results.Add(id_RangeAttribute.GetValidationResult(id, validationContext));
             var errors = new Dictionary<string, string[]>();
             foreach (var result in results)
             {

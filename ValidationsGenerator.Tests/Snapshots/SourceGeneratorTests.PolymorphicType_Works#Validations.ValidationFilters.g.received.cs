@@ -18,24 +18,20 @@ public static partial class Validations
     }
     public static readonly System.Collections.Generic.Dictionary<(string, int), Func<EndpointFilterInvocationContext, EndpointFilterDelegate, ValueTask<object?>>> Map = new()
     {
-        [("d57ed7b9-9143-4148-977b-64e3fc7098bf.cs", 9)] = async (EndpointFilterInvocationContext context, EndpointFilterDelegate next) =>
+        [("49b06c30-b4db-4076-8558-3d460f45d292.cs", 19)] = async (EndpointFilterInvocationContext context, EndpointFilterDelegate next) =>
         {
             var results = new List<ValidationResult>();
-            var id = context.GetArgument<int>(0);
-            var validationContext = new ValidationContext(id);
-            validationContext.MemberName = "id";
-            validationContext.DisplayName = "id";
-            var id_RequiredAttribute = new System.ComponentModel.DataAnnotations.RequiredAttribute();
-            results.Add(id_RequiredAttribute.GetValidationResult(id, validationContext));
-            var id_RangeAttribute = new System.ComponentModel.DataAnnotations.RangeAttribute(1,2147483647);
-            results.Add(id_RangeAttribute.GetValidationResult(id, validationContext));
+            var todosIn = context.GetArgument<TodoWithProject>(0);
+            Validations.Validate(todosIn, ref results);
             var errors = new Dictionary<string, string[]>();
             foreach (var result in results)
             {
                 if (result != ValidationResult.Success)
                 {
                     errors.Add(result.MemberNames.SingleOrDefault(), new[] { result.ErrorMessage });
-                }            }            if (errors.Count > 0)
+                }
+            }
+            if (errors.Count > 0)
             {
                 return Results.ValidationProblem(errors);
             }
