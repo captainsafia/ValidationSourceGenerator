@@ -2,7 +2,6 @@
 
 var app = WebApplication.Create();
 var todos = new List<Todo>();
-var projects = new List<Project>();
 
 // Validating a single complex parameter
 app.MapPost("/todo", (Todo todo) => todos.Add(todo))
@@ -21,22 +20,20 @@ app.MapPut("/todo/{id}", ([Required] [Range(1, int.MaxValue)] int id, Todo todo)
     .WithValidation();
 
 // Validate with IEnumerable types
+// For each validatable type, we produce a `Validate` overload that takes `IEnumerable<T>`
 app.MapPost("/todos", (List<Todo> todosIn) => todos.AddRange(todosIn))
     .WithValidation();
 
 // Validate with polymorphic types
+// Under the hood, we produce two `Validate` calls. One that takes a `TodoWithProject` and another
+// that takes `Todo`.
 app.MapPost("/todos-with-project", (TodoWithProject todosIn) => todos.Add(todosIn))
     .WithValidation();
 
 // Validate with recursive types
-app.MapPost("/projects", (Project project) =>
-{
-    projects.Add(project);
-    return Results.Ok(project);
-});
-
-// Validate with IValidatableObjects
-
+// In MVC, when MaxValidationDepth is lower than the amount of recursion in the stack, then
+// an exception will be thrown. In this implementation, we present a warning to the user.
+app.MapPost("/recursive-todos", (RecursiveTodo todo) => Results.Ok("Valid!"));
 
 // Detecting validate on a group
 // var group = app.MapGroup("/todos/{id}").WithValidation();
@@ -59,26 +56,12 @@ public class TodoWithProject : Todo
     public string Project { get; set; } = string.Empty;
 }
 
-public class TodoList
+public class RecursiveTodo
 {
-    public string ListName { get; set; }
-    [EmailAddress]
-    public string OwnerEmail { get; set; }
-    public List<Todo> Tasks { get; set; }
-}
-
-public class Board
-{
-    public string BoardName { get; set; }
-    [Phone]
-    public string BoardContact { get; set; }
-    public List<TodoList> TodoLists { get; set; }
-}
-
-public class Project
-{
-    public string ProjectName { get; set; }
-    [Url]
-    public string ProjectUrl { get; set; }
-    public List<Board> Boards { get; set; }
+    [Required, Range(1, int.MaxValue)]
+    public int Id { get; set; }
+    public bool IsCompleted { get; set; }
+    [Required, MinLength(3)]
+    public string Title { get; set; } = string.Empty;
+    public RecursiveTodo ReferencedTodo { get; set; }
 }

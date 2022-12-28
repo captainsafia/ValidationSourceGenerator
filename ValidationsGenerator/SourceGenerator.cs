@@ -131,13 +131,14 @@ public class SourceGenerator : IIncrementalGenerator
             foreach (var groupedType in groupedTypes)
             {
                 var elementType = groupedType.Key;
+                codeWriter.Indent();
                 codeWriter.WriteLine($"public static void Validate({elementType} value, ref List<ValidationResult> results)");
                 codeWriter.WriteLine("{");
                 codeWriter.Indent();
                 codeWriter.WriteLine($"if (value.GetType() != typeof({elementType}))");
                 codeWriter.WriteLine("{");
                 codeWriter.Indent();
-                codeWriter.Write($@"throw new Exception($""Expected to validate {elementType} but got {{value.GetType()}}"");");
+                codeWriter.WriteLine($@"throw new Exception($""Expected to validate {elementType} but got {{value.GetType()}}"");");
                 codeWriter.Unindent();
                 codeWriter.WriteLine("}");
                 codeWriter.WriteLine("var validationContext = new ValidationContext(value);");
@@ -158,7 +159,7 @@ public class SourceGenerator : IIncrementalGenerator
                 }
 
                 codeWriter.Unindent();
-                codeWriter.Write("}");
+                codeWriter.WriteLine("}");
                 
                 codeWriter.WriteLine($"public static void Validate(IEnumerable<{elementType}> values, ref List<ValidationResult> results)");
                 codeWriter.WriteLine("{");
@@ -188,7 +189,8 @@ public class SourceGenerator : IIncrementalGenerator
                 codeWriter.Unindent();
                 codeWriter.WriteLine("}");
                 codeWriter.Unindent();
-                codeWriter.Write("}");
+                codeWriter.WriteLine("}");
+                codeWriter.Unindent();
             }
 
             return code.ToString();
@@ -204,9 +206,7 @@ public class SourceGenerator : IIncrementalGenerator
             codeWriter.WriteLine("using System.Collections.Generic;");
             codeWriter.WriteLine("public static partial class Validations");
             codeWriter.WriteLine("{");
-            codeWriter.Indent();
             codeWriter.WriteLine(sources);
-            codeWriter.Unindent();
             codeWriter.WriteLine("}");
             
             context.AddSource("Validation.ValidationTypeMethods.g.cs", code.ToString());
@@ -262,9 +262,9 @@ public class SourceGenerator : IIncrementalGenerator
             codeWriter.Indent();
             codeWriter.WriteLine("errors.Add(result.MemberNames.SingleOrDefault(), new[] { result.ErrorMessage });");
             codeWriter.Unindent();
-            codeWriter.Write("}");
+            codeWriter.WriteLine("}");
             codeWriter.Unindent();
-            codeWriter.Write("}");
+            codeWriter.WriteLine("}");
             codeWriter.WriteLine("if (errors.Count > 0)");
             codeWriter.WriteLine("{");
             codeWriter.Indent();

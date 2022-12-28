@@ -17,7 +17,7 @@ public static partial class Validations
     }
     public static readonly System.Collections.Generic.Dictionary<(string, int), Func<EndpointFilterInvocationContext, EndpointFilterDelegate, ValueTask<object?>>> Map = new()
     {
-        [("/Users/captainsafia/github.com/captainsafia/ValidationSourceGenerator/samples/SampleApp/Program.cs", 9)] = async (EndpointFilterInvocationContext context, EndpointFilterDelegate next) =>
+        [("/Users/captainsafia/github.com/captainsafia/ValidationSourceGenerator/samples/SampleApp/Program.cs", 8)] = async (EndpointFilterInvocationContext context, EndpointFilterDelegate next) =>
         {
             var results = new List<ValidationResult>();
             var todo = context.GetArgument<Todo>(0);
@@ -37,7 +37,7 @@ public static partial class Validations
             return await next(context);
         },
 
-        [("/Users/captainsafia/github.com/captainsafia/ValidationSourceGenerator/samples/SampleApp/Program.cs", 13)] = async (EndpointFilterInvocationContext context, EndpointFilterDelegate next) =>
+        [("/Users/captainsafia/github.com/captainsafia/ValidationSourceGenerator/samples/SampleApp/Program.cs", 12)] = async (EndpointFilterInvocationContext context, EndpointFilterDelegate next) =>
         {
             var results = new List<ValidationResult>();
             var id = context.GetArgument<int>(0);
@@ -63,7 +63,7 @@ public static partial class Validations
             return await next(context);
         },
 
-        [("/Users/captainsafia/github.com/captainsafia/ValidationSourceGenerator/samples/SampleApp/Program.cs", 21)] = async (EndpointFilterInvocationContext context, EndpointFilterDelegate next) =>
+        [("/Users/captainsafia/github.com/captainsafia/ValidationSourceGenerator/samples/SampleApp/Program.cs", 20)] = async (EndpointFilterInvocationContext context, EndpointFilterDelegate next) =>
         {
             var results = new List<ValidationResult>();
             var id = context.GetArgument<int>(0);
@@ -91,7 +91,7 @@ public static partial class Validations
             return await next(context);
         },
 
-        [("/Users/captainsafia/github.com/captainsafia/ValidationSourceGenerator/samples/SampleApp/Program.cs", 25)] = async (EndpointFilterInvocationContext context, EndpointFilterDelegate next) =>
+        [("/Users/captainsafia/github.com/captainsafia/ValidationSourceGenerator/samples/SampleApp/Program.cs", 24)] = async (EndpointFilterInvocationContext context, EndpointFilterDelegate next) =>
         {
             var results = new List<ValidationResult>();
             var todosIn = context.GetArgument<System.Collections.Generic.List<Todo>>(0);
@@ -111,7 +111,7 @@ public static partial class Validations
             return await next(context);
         },
 
-        [("/Users/captainsafia/github.com/captainsafia/ValidationSourceGenerator/samples/SampleApp/Program.cs", 29)] = async (EndpointFilterInvocationContext context, EndpointFilterDelegate next) =>
+        [("/Users/captainsafia/github.com/captainsafia/ValidationSourceGenerator/samples/SampleApp/Program.cs", 28)] = async (EndpointFilterInvocationContext context, EndpointFilterDelegate next) =>
         {
             var results = new List<ValidationResult>();
             var todosIn = context.GetArgument<TodoWithProject>(0);
@@ -131,11 +131,11 @@ public static partial class Validations
             return await next(context);
         },
 
-        [("/Users/captainsafia/github.com/captainsafia/ValidationSourceGenerator/samples/SampleApp/Program.cs", 36)] = async (EndpointFilterInvocationContext context, EndpointFilterDelegate next) =>
+        [("/Users/captainsafia/github.com/captainsafia/ValidationSourceGenerator/samples/SampleApp/Program.cs", 31)] = async (EndpointFilterInvocationContext context, EndpointFilterDelegate next) =>
         {
             var results = new List<ValidationResult>();
-            var project = context.GetArgument<Project>(0);
-            Validations.Validate(project, ref results);
+            var todo = context.GetArgument<RecursiveTodo>(0);
+            Validations.Validate(todo, ref results);
             var errors = new Dictionary<string, string[]>();
             foreach (var result in results)
             {

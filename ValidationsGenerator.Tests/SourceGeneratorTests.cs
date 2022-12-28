@@ -98,6 +98,65 @@ app.MapPost("/todos-with-project", (TodoWithProject todosIn) => todos.Add(todosI
             expectedStatusCode: expectedStatusCode);
     }
 
+    public static object[][] RecursiveTypesData
+    {
+        get
+        {
+            var invalidTopLevelData = """
+{
+    "id": 0,
+    "title": "A valid title",
+    "isCompleted": false,
+    "referencedTodo": {
+        "id": 1,
+        "title": "A valid title",
+        "isCompleted": false
+    }
+}
+""";
+            var invalidTopLevelMessage = """{"type":"https://tools.ietf.org/html/rfc7231#section-6.5.1","title":"One or more validation errors occurred.","status":400,"errors":{"RecursiveTodo.Id":["The field RecursiveTodo.Id must be between 1 and 2147483647."]}}""";
+            
+            var invalidNestedLevelData = """
+{
+    "id": 1,
+    "title": "A valid title",
+    "isCompleted": false,
+    "referencedTodo": {
+        "id": 1,
+        "title": "A",
+        "isCompleted": false
+    }
+}
+""";
+            var invalidNestedLevelMessage = "";
+            
+            return new []
+            {
+                new object[] { invalidTopLevelData, 400, invalidTopLevelMessage },
+                new object[] { invalidNestedLevelData, 400, invalidNestedLevelMessage }
+            };
+        }
+    }
+    
+    [Theory]
+    [MemberData(nameof(RecursiveTypesData))]
+    public async Task RecursiveTypes_Works(string requestBody, int expectedStatusCode, string expectedResponse)
+    {
+        var source = GetCompilationSource("""
+app.MapPost("/recursive-todo", (RecursiveTodo todo) => "Valid!")
+    .WithValidation();
+""");
+        
+        var compilation = await Verify(source);
+        var endpoint = GetEndpoint(compilation);
+        
+        await AssertEndpointBehavior(
+                                     endpoint: endpoint,
+                                     requestBody: requestBody,
+                                     expectedResponse: expectedResponse,
+                                     expectedStatusCode: expectedStatusCode);
+    }
+
     private static string GetCompilationSource(string innerSource)
     {
         return $$"""
@@ -137,6 +196,16 @@ public class TodoWithProject : Todo
     [Required]
     [MinLength(6)]
     public string Project { get; set; } = string.Empty;
+}
+
+public class RecursiveTodo
+{
+    [Required, Range(1, int.MaxValue)]
+    public int Id { get; set; }
+    public bool IsCompleted { get; set; }
+    [Required, MinLength(3)]
+    public string Title { get; set; } = string.Empty;
+    public RecursiveTodo ReferencedTodo { get; set; }
 }
 
 public partial class Program {}
