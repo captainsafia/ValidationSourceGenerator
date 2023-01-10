@@ -12,143 +12,173 @@ public static partial class Validations
 {
     public static TBuilder WithValidation<TBuilder>(this TBuilder builder, [CallerFilePath] string filePath = "", [CallerLineNumber] int lineNumber = 0) where TBuilder : IEndpointConventionBuilder
     {
-        builder.AddEndpointFilter(Validations.Map[(filePath, lineNumber)]);
+        builder.AddEndpointFilterFactory(Validations.Map[(filePath, lineNumber)]);
         return builder;
     }
-    public static readonly System.Collections.Generic.Dictionary<(string, int), Func<EndpointFilterInvocationContext, EndpointFilterDelegate, ValueTask<object?>>> Map = new()
+    public static readonly System.Collections.Generic.Dictionary<(string, int), Func<EndpointFilterFactoryContext, EndpointFilterDelegate, EndpointFilterDelegate>> Map = new()
     {
-        [("/Users/captainsafia/github.com/captainsafia/ValidationSourceGenerator/samples/SampleApp/Program.cs", 8)] = async (EndpointFilterInvocationContext context, EndpointFilterDelegate next) =>
+        [("/Users/captainsafia/repos/ValidationSourceGenerator/samples/SampleApp/Program.cs", 8)] = (EndpointFilterFactoryContext factoryContext, EndpointFilterDelegate next) =>
         {
-            var results = new List<ValidationResult>();
-            var todo = context.GetArgument<Todo>(0);
-            Validations.Validate(todo, ref results);
-            var errors = new Dictionary<string, string[]>();
-            foreach (var result in results)
+
+            return async (context) =>
             {
-                if (result != ValidationResult.Success)
+                var results = new List<ValidationResult>();
+                var todo = context.GetArgument<Todo>(0);
+                Validations.Validate(todo, ref results);
+                var errors = new Dictionary<string, string[]>();
+                foreach (var result in results)
                 {
-                    errors.Add(result.MemberNames.SingleOrDefault(), new[] { result.ErrorMessage });
+                    if (result != ValidationResult.Success)
+                    {
+                        errors.Add(result.MemberNames.SingleOrDefault(), new[] { result.ErrorMessage });
+                    }
                 }
-            }
-            if (errors.Count > 0)
-            {
-                return Results.ValidationProblem(errors);
-            }
-            return await next(context);
+                if (errors.Count > 0)
+                {
+                    return Results.ValidationProblem(errors);
+                }
+                return await next(context);
+            };
+
         },
 
-        [("/Users/captainsafia/github.com/captainsafia/ValidationSourceGenerator/samples/SampleApp/Program.cs", 12)] = async (EndpointFilterInvocationContext context, EndpointFilterDelegate next) =>
+        [("/Users/captainsafia/repos/ValidationSourceGenerator/samples/SampleApp/Program.cs", 12)] = (EndpointFilterFactoryContext factoryContext, EndpointFilterDelegate next) =>
         {
-            var results = new List<ValidationResult>();
-            var id = context.GetArgument<int>(0);
-            var validationContext = new ValidationContext(id);
-            validationContext.MemberName = "id";
-            validationContext.DisplayName = "id";
             var id_RequiredAttribute = new System.ComponentModel.DataAnnotations.RequiredAttribute();
-            results.Add(id_RequiredAttribute.GetValidationResult(id, validationContext));
             var id_RangeAttribute = new System.ComponentModel.DataAnnotations.RangeAttribute(1,2147483647);
-            results.Add(id_RangeAttribute.GetValidationResult(id, validationContext));
-            var errors = new Dictionary<string, string[]>();
-            foreach (var result in results)
+
+            return async (context) =>
             {
-                if (result != ValidationResult.Success)
+                var results = new List<ValidationResult>();
+                var id = context.GetArgument<int>(0);
+                var validationContext = new ValidationContext(id);
+                validationContext.MemberName = "id";
+                validationContext.DisplayName = "id";
+                results.Add(id_RequiredAttribute.GetValidationResult(id, validationContext));
+                results.Add(id_RangeAttribute.GetValidationResult(id, validationContext));
+                var errors = new Dictionary<string, string[]>();
+                foreach (var result in results)
                 {
-                    errors.Add(result.MemberNames.SingleOrDefault(), new[] { result.ErrorMessage });
+                    if (result != ValidationResult.Success)
+                    {
+                        errors.Add(result.MemberNames.SingleOrDefault(), new[] { result.ErrorMessage });
+                    }
                 }
-            }
-            if (errors.Count > 0)
-            {
-                return Results.ValidationProblem(errors);
-            }
-            return await next(context);
+                if (errors.Count > 0)
+                {
+                    return Results.ValidationProblem(errors);
+                }
+                return await next(context);
+            };
+
         },
 
-        [("/Users/captainsafia/github.com/captainsafia/ValidationSourceGenerator/samples/SampleApp/Program.cs", 20)] = async (EndpointFilterInvocationContext context, EndpointFilterDelegate next) =>
+        [("/Users/captainsafia/repos/ValidationSourceGenerator/samples/SampleApp/Program.cs", 20)] = (EndpointFilterFactoryContext factoryContext, EndpointFilterDelegate next) =>
         {
-            var results = new List<ValidationResult>();
-            var id = context.GetArgument<int>(0);
-            var validationContext = new ValidationContext(id);
-            validationContext.MemberName = "id";
-            validationContext.DisplayName = "id";
             var id_RequiredAttribute = new System.ComponentModel.DataAnnotations.RequiredAttribute();
-            results.Add(id_RequiredAttribute.GetValidationResult(id, validationContext));
             var id_RangeAttribute = new System.ComponentModel.DataAnnotations.RangeAttribute(1,2147483647);
-            results.Add(id_RangeAttribute.GetValidationResult(id, validationContext));
-            var todo = context.GetArgument<Todo>(1);
-            Validations.Validate(todo, ref results);
-            var errors = new Dictionary<string, string[]>();
-            foreach (var result in results)
+
+            return async (context) =>
             {
-                if (result != ValidationResult.Success)
+                var results = new List<ValidationResult>();
+                var id = context.GetArgument<int>(0);
+                var validationContext = new ValidationContext(id);
+                validationContext.MemberName = "id";
+                validationContext.DisplayName = "id";
+                results.Add(id_RequiredAttribute.GetValidationResult(id, validationContext));
+                results.Add(id_RangeAttribute.GetValidationResult(id, validationContext));
+                var todo = context.GetArgument<Todo>(1);
+                Validations.Validate(todo, ref results);
+                var errors = new Dictionary<string, string[]>();
+                foreach (var result in results)
                 {
-                    errors.Add(result.MemberNames.SingleOrDefault(), new[] { result.ErrorMessage });
+                    if (result != ValidationResult.Success)
+                    {
+                        errors.Add(result.MemberNames.SingleOrDefault(), new[] { result.ErrorMessage });
+                    }
                 }
-            }
-            if (errors.Count > 0)
-            {
-                return Results.ValidationProblem(errors);
-            }
-            return await next(context);
+                if (errors.Count > 0)
+                {
+                    return Results.ValidationProblem(errors);
+                }
+                return await next(context);
+            };
+
         },
 
-        [("/Users/captainsafia/github.com/captainsafia/ValidationSourceGenerator/samples/SampleApp/Program.cs", 24)] = async (EndpointFilterInvocationContext context, EndpointFilterDelegate next) =>
+        [("/Users/captainsafia/repos/ValidationSourceGenerator/samples/SampleApp/Program.cs", 25)] = (EndpointFilterFactoryContext factoryContext, EndpointFilterDelegate next) =>
         {
-            var results = new List<ValidationResult>();
-            var todosIn = context.GetArgument<System.Collections.Generic.List<Todo>>(0);
-            Validations.Validate(todosIn, ref results);
-            var errors = new Dictionary<string, string[]>();
-            foreach (var result in results)
+
+            return async (context) =>
             {
-                if (result != ValidationResult.Success)
+                var results = new List<ValidationResult>();
+                var todosIn = context.GetArgument<System.Collections.Generic.List<Todo>>(0);
+                Validations.Validate(todosIn, ref results);
+                var errors = new Dictionary<string, string[]>();
+                foreach (var result in results)
                 {
-                    errors.Add(result.MemberNames.SingleOrDefault(), new[] { result.ErrorMessage });
+                    if (result != ValidationResult.Success)
+                    {
+                        errors.Add(result.MemberNames.SingleOrDefault(), new[] { result.ErrorMessage });
+                    }
                 }
-            }
-            if (errors.Count > 0)
-            {
-                return Results.ValidationProblem(errors);
-            }
-            return await next(context);
+                if (errors.Count > 0)
+                {
+                    return Results.ValidationProblem(errors);
+                }
+                return await next(context);
+            };
+
         },
 
-        [("/Users/captainsafia/github.com/captainsafia/ValidationSourceGenerator/samples/SampleApp/Program.cs", 28)] = async (EndpointFilterInvocationContext context, EndpointFilterDelegate next) =>
+        [("/Users/captainsafia/repos/ValidationSourceGenerator/samples/SampleApp/Program.cs", 31)] = (EndpointFilterFactoryContext factoryContext, EndpointFilterDelegate next) =>
         {
-            var results = new List<ValidationResult>();
-            var todosIn = context.GetArgument<TodoWithProject>(0);
-            Validations.Validate(todosIn, ref results);
-            var errors = new Dictionary<string, string[]>();
-            foreach (var result in results)
+
+            return async (context) =>
             {
-                if (result != ValidationResult.Success)
+                var results = new List<ValidationResult>();
+                var todosIn = context.GetArgument<TodoWithProject>(0);
+                Validations.Validate(todosIn, ref results);
+                var errors = new Dictionary<string, string[]>();
+                foreach (var result in results)
                 {
-                    errors.Add(result.MemberNames.SingleOrDefault(), new[] { result.ErrorMessage });
+                    if (result != ValidationResult.Success)
+                    {
+                        errors.Add(result.MemberNames.SingleOrDefault(), new[] { result.ErrorMessage });
+                    }
                 }
-            }
-            if (errors.Count > 0)
-            {
-                return Results.ValidationProblem(errors);
-            }
-            return await next(context);
+                if (errors.Count > 0)
+                {
+                    return Results.ValidationProblem(errors);
+                }
+                return await next(context);
+            };
+
         },
 
-        [("/Users/captainsafia/github.com/captainsafia/ValidationSourceGenerator/samples/SampleApp/Program.cs", 31)] = async (EndpointFilterInvocationContext context, EndpointFilterDelegate next) =>
+        [("/Users/captainsafia/repos/ValidationSourceGenerator/samples/SampleApp/Program.cs", 36)] = (EndpointFilterFactoryContext factoryContext, EndpointFilterDelegate next) =>
         {
-            var results = new List<ValidationResult>();
-            var todo = context.GetArgument<RecursiveTodo>(0);
-            Validations.Validate(todo, ref results);
-            var errors = new Dictionary<string, string[]>();
-            foreach (var result in results)
+
+            return async (context) =>
             {
-                if (result != ValidationResult.Success)
+                var results = new List<ValidationResult>();
+                var todo = context.GetArgument<RecursiveTodo>(0);
+                Validations.Validate(todo, ref results);
+                var errors = new Dictionary<string, string[]>();
+                foreach (var result in results)
                 {
-                    errors.Add(result.MemberNames.SingleOrDefault(), new[] { result.ErrorMessage });
+                    if (result != ValidationResult.Success)
+                    {
+                        errors.Add(result.MemberNames.SingleOrDefault(), new[] { result.ErrorMessage });
+                    }
                 }
-            }
-            if (errors.Count > 0)
-            {
-                return Results.ValidationProblem(errors);
-            }
-            return await next(context);
+                if (errors.Count > 0)
+                {
+                    return Results.ValidationProblem(errors);
+                }
+                return await next(context);
+            };
+
         },
 
     };

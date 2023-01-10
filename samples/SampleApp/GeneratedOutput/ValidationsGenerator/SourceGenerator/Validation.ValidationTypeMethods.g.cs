@@ -103,7 +103,6 @@ public static partial class Validations
         {
             throw new Exception($"Expected to validate RecursiveTodo but got {value.GetType()}");
         }
-        
         var validationContext = new ValidationContext(value);
         validationContext.MemberName = "RecursiveTodo.Id";
         validationContext.DisplayName = "RecursiveTodo.Id";
@@ -117,6 +116,7 @@ public static partial class Validations
         validationContext.MemberName = "RecursiveTodo.Title";
         validationContext.DisplayName = "RecursiveTodo.Title";
         results.Add(RecursiveTodo_Title_MinLengthAttribute.GetValidationResult(value.Title, validationContext));
+        Validations.Validate(value.ReferencedTodo, ref results);
     }
     public static void Validate(IEnumerable<RecursiveTodo> values, ref List<ValidationResult> results)
     {
@@ -136,7 +136,9 @@ public static partial class Validations
             validationContext.MemberName = $"RecursiveTodo[{index}].Title";
             validationContext.DisplayName = $"RecursiveTodo[{index}].Title";
             results.Add(RecursiveTodo_Title_MinLengthAttribute.GetValidationResult(value.Title, validationContext));
+            Validations.Validate(value.ReferencedTodo, ref results);
             index++;
         }
     }
+
 }

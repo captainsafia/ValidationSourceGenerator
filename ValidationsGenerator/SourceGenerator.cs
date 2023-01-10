@@ -62,15 +62,23 @@ public class SourceGenerator : IIncrementalGenerator
             return (filePath, lineNumber, parameters);
         });
 
+        // Pluck out a collection of `ParameterType`s for all the `ParameterInfo`s
+        // in an application
+        var parameterTypes = parametersWithSpanInfo.Select((parametersWithSpanInfo, _) =>
+        {
+            var (_, _, parameters) = parametersWithSpanInfo;
+            return parameters.Select(parameter => parameter.ParameterType);
+        });
+
         // Get the parameters that are validatable because they are types that
         // have validatable properties like (Todo todo) => ..
-        var validatableTypes = parametersWithSpanInfo.Select((sources, _) =>
+        var validatableTypes = parameterTypes.Select((parameters, _) =>
         {
-            var (filePath, lineNumber, parameters) = sources;
-            return parameters.SelectMany(parameter => GetTypesWithValidatableProperties(parameter.ParameterType));
+            return parameters.Select(type => GetTypesWithValidatableProperties(type))
+                .Where(type => type.ValidatableProperties.Count > 0);
         }).Collect().Select((input, _) =>
         {
-            var total = new List<TypeAnnotations>();
+            var total = new List<ValidatableType>();
             foreach (var types in input)
             {
                 foreach (var type in types)
@@ -91,17 +99,22 @@ public class SourceGenerator : IIncrementalGenerator
         {
             var code = new StringBuilder();
             var codeWriter = new CodeWriter(code);
+            codeWriter.Indent();
             foreach (var type in types)
             {
-                var attributes = type.Attributes;
-                foreach (var attribute in attributes)
+                foreach (var property in type.ValidatableProperties)
                 {
-                    var validatorName = $"{type.ElementType}_{type.Property.Name}_{attribute.AttributeClass.Name}";
-                    // If the attribute was configured with construct args, use those.
-                    var constructorArguments = attribute.ConstructorArguments.Any()
-                        ? $"({string.Join(",", attribute.ConstructorArguments.Select(arg => arg.Value))})"
-                        : "()";
-                    codeWriter.WriteLine($"private static readonly ValidationAttribute {validatorName} = new {attribute.AttributeClass.Name}{constructorArguments};");
+                    var attributes = property.Attributes;
+                    foreach (var attribute in attributes)
+                    {
+                        var validatorName = $"{type.ElementType}_{property.Property.Name}_{attribute.AttributeClass.Name}";
+                        // If the attribute was configured with construct args, use those.
+                        var constructorArguments = attribute.ConstructorArguments.Any()
+                            ? $"({string.Join(",", attribute.ConstructorArguments.Select(arg => arg.Value))})"
+                            : "()";
+                        codeWriter
+                            .WriteLine($"private static readonly ValidationAttribute {validatorName} = new {attribute.AttributeClass.Name}{constructorArguments};");
+                    }
                 }
             }
 
@@ -115,7 +128,6 @@ public class SourceGenerator : IIncrementalGenerator
             codeWriter.WriteLine("using System.ComponentModel.DataAnnotations;");
             codeWriter.WriteLine("public static partial class Validations");
             codeWriter.WriteLine("{");
-            codeWriter.Indent();
             codeWriter.WriteLine(sources);
             codeWriter.Unindent();
             codeWriter.WriteLine("}");
@@ -123,14 +135,13 @@ public class SourceGenerator : IIncrementalGenerator
             context.AddSource("Validation.ValidationAttributeInstances.g.cs", code.ToString());
         });
 
-        var validatableTypeMethods = validatableTypes.Select((types,_) =>
+        var validatableTypeMethods = validatableTypes.Select((validatableTypes,_) =>
         {
             var code = new StringBuilder();
             var codeWriter = new CodeWriter(code);
-            var groupedTypes = types.GroupBy(type => type.ElementType);
-            foreach (var groupedType in groupedTypes)
+            foreach (var validatableType in validatableTypes)
             {
-                var elementType = groupedType.Key;
+                var elementType = validatableType.ElementType;
                 codeWriter.Indent();
                 codeWriter.WriteLine($"public static void Validate({elementType} value, ref List<ValidationResult> results)");
                 codeWriter.WriteLine("{");
@@ -142,19 +153,25 @@ public class SourceGenerator : IIncrementalGenerator
                 codeWriter.Unindent();
                 codeWriter.WriteLine("}");
                 codeWriter.WriteLine("var validationContext = new ValidationContext(value);");
-                foreach (var type in groupedType)
+                foreach (var validatableProperty in validatableType.ValidatableProperties)
                 {
-                    var attributes = type.Attributes;
+                    var property = validatableProperty.Property;
+                    var attributes = validatableProperty.Attributes;
                     foreach (var attribute in attributes)
                     {
-                        var validatorName = $"{elementType}_{type.Property.Name}_{attribute.AttributeClass.Name}";
+                        var validatorName = $"{elementType}_{property.Name}_{attribute.AttributeClass.Name}";
                         codeWriter.WriteLine(
-                            $@"validationContext.MemberName = ""{elementType.Name}.{type.Property.Name}"";");
+                            $@"validationContext.MemberName = ""{elementType.Name}.{property.Name}"";");
                         codeWriter.WriteLine(
-                            $@"validationContext.DisplayName = ""{elementType.Name}.{type.Property.Name}"";");
+                            $@"validationContext.DisplayName = ""{elementType.Name}.{property.Name}"";");
                         codeWriter
                             .WriteLine(
-                                $@"results.Add({validatorName}.GetValidationResult(value.{type.Property.Name}, validationContext));");
+                                $@"results.Add({validatorName}.GetValidationResult(value.{property.Name}, validationContext));");
+                    }
+
+                    if (validatableProperty.IsOtherValidatableType)
+                    {
+                        codeWriter.WriteLine($"Validations.Validate(value.{property.Name}, ref results);");
                     }
                 }
 
@@ -169,19 +186,25 @@ public class SourceGenerator : IIncrementalGenerator
                 codeWriter.WriteLine("foreach (var value in values)");
                 codeWriter.WriteLine("{");
                 codeWriter.Indent();
-                foreach (var type in groupedType)
+                foreach (var validatableProperty in validatableType.ValidatableProperties)
                 {
-                    var attributes = type.Attributes;
+                    var property = validatableProperty.Property;
+                    var attributes = validatableProperty.Attributes;
                     foreach (var attribute in attributes)
                     {
-                        var validatorName = $"{type.ElementType}_{type.Property.Name}_{attribute.AttributeClass.Name}";
+                        var validatorName = $"{elementType}_{property.Name}_{attribute.AttributeClass.Name}";
                         codeWriter.WriteLine(
-                            $@"validationContext.MemberName = $""{type.ElementType.Name}[{{index}}].{type.Property.Name}"";");
+                            $@"validationContext.MemberName = $""{elementType.Name}[{{index}}].{property.Name}"";");
                         codeWriter.WriteLine(
-                            $@"validationContext.DisplayName = $""{type.ElementType.Name}[{{index}}].{type.Property.Name}"";");
+                            $@"validationContext.DisplayName = $""{elementType.Name}[{{index}}].{property.Name}"";");
                         codeWriter
                             .WriteLine(
-                                $@"results.Add({validatorName}.GetValidationResult(value.{type.Property.Name}, validationContext));");
+                                $@"results.Add({validatorName}.GetValidationResult(value.{property.Name}, validationContext));");
+                    }
+
+                    if (validatableProperty.IsOtherValidatableType)
+                    {
+                        codeWriter.WriteLine($"Validations.Validate(value.{property.Name}, ref results);");
                     }
                 }
 
@@ -219,22 +242,30 @@ public class SourceGenerator : IIncrementalGenerator
             var (filePath, lineNumber, parameters) = input;
             var code = new StringBuilder();
             var codeWriter = new CodeWriter(code);
-            codeWriter.WriteLine($@"[(""{filePath}"", {lineNumber})] = async (EndpointFilterInvocationContext context, EndpointFilterDelegate next) =>");
-            codeWriter.Indent();
-            codeWriter.Indent();
-            codeWriter.WriteLine("{");
-            codeWriter.Indent();
-            codeWriter.WriteLine("var results = new List<ValidationResult>();");
+            var filterFactoryCode = new StringBuilder();
+            var filterFactoryCodeWriter = new CodeWriter(filterFactoryCode);
+            filterFactoryCodeWriter.Indent();
+            filterFactoryCodeWriter.Indent();
+            filterFactoryCodeWriter.Indent();
+            var filterDelegateCode = new StringBuilder();
+            var filterDelegateCodeWriter = new CodeWriter(filterDelegateCode);
+            filterDelegateCodeWriter.Indent();
+            filterDelegateCodeWriter.Indent();
+            filterDelegateCodeWriter.Indent();
+            filterDelegateCodeWriter.WriteLine("return async (context) =>");
+            filterDelegateCodeWriter.WriteLine("{");
+            filterDelegateCodeWriter.Indent();
+            filterDelegateCodeWriter.WriteLine("var results = new List<ValidationResult>();");
             var parameterIndex = 0;
             foreach (var parameter in parameters)
             {
-                codeWriter.WriteLine($"var {parameter.Name} = context.GetArgument<{parameter.ParameterType}>({parameterIndex});");
+                filterDelegateCodeWriter.WriteLine($"var {parameter.Name} = context.GetArgument<{parameter.ParameterType}>({parameterIndex});");
                 if (parameter.TryGetTopLevelValidations(out var topLevelAttributes))
                 {
-                    codeWriter.WriteLine($"var validationContext = new ValidationContext({parameter.Name});");
-                    codeWriter.WriteLine(
+                    filterDelegateCodeWriter.WriteLine($"var validationContext = new ValidationContext({parameter.Name});");
+                    filterDelegateCodeWriter.WriteLine(
                         $@"validationContext.MemberName = ""{parameter.Name}"";");
-                    codeWriter.WriteLine(
+                    filterDelegateCodeWriter.WriteLine(
                         $@"validationContext.DisplayName = ""{parameter.Name}"";");
                     foreach (var attribute in topLevelAttributes)
                     {
@@ -242,37 +273,49 @@ public class SourceGenerator : IIncrementalGenerator
                         var constructorArgs = attribute.ConstructorArguments.Count > 0
                             ? $"({string.Join(",", attribute.ConstructorArguments.Select(arg => arg.Value))})"
                             : "()";
-                        codeWriter.WriteLine($"var {validatorName} = new {attribute.AttributeType.FullName}{constructorArgs};");
-                        codeWriter.WriteLine($"results.Add({validatorName}.GetValidationResult({parameter.Name}, validationContext));");
+                        filterFactoryCodeWriter.WriteLine($"var {validatorName} = new {attribute.AttributeType.FullName}{constructorArgs};");
+                        filterDelegateCodeWriter.WriteLine($"results.Add({validatorName}.GetValidationResult({parameter.Name}, validationContext));");
                     }
                 }
                 else
                 {
-                    codeWriter.WriteLine($"Validations.Validate({parameter.Name}, ref results);");
+                    filterDelegateCodeWriter.WriteLine($"Validations.Validate({parameter.Name}, ref results);");
                 }
                 parameterIndex++;
             }
             
-            codeWriter.WriteLine("var errors = new Dictionary<string, string[]>();");
-            codeWriter.WriteLine("foreach (var result in results)");
-            codeWriter.WriteLine("{");
+            filterDelegateCodeWriter.WriteLine("var errors = new Dictionary<string, string[]>();");
+            filterDelegateCodeWriter.WriteLine("foreach (var result in results)");
+            filterDelegateCodeWriter.WriteLine("{");
+            filterDelegateCodeWriter.Indent();
+            filterDelegateCodeWriter.WriteLine("if (result != ValidationResult.Success)");
+            filterDelegateCodeWriter.WriteLine("{");
+            filterDelegateCodeWriter.Indent();
+            filterDelegateCodeWriter.WriteLine("errors.Add(result.MemberNames.SingleOrDefault(), new[] { result.ErrorMessage });");
+            filterDelegateCodeWriter.Unindent();
+            filterDelegateCodeWriter.WriteLine("}");
+            filterDelegateCodeWriter.Unindent();
+            filterDelegateCodeWriter.WriteLine("}");
+            filterDelegateCodeWriter.WriteLine("if (errors.Count > 0)");
+            filterDelegateCodeWriter.WriteLine("{");
+            filterDelegateCodeWriter.Indent();
+            filterDelegateCodeWriter.WriteLine("return Results.ValidationProblem(errors);");
+            filterDelegateCodeWriter.Unindent();
+            filterDelegateCodeWriter.WriteLine("}");
+            filterDelegateCodeWriter.WriteLine("return await next(context);");
+            filterDelegateCodeWriter.Unindent();
+            filterDelegateCodeWriter.WriteLine("};");
+            
+            codeWriter.WriteLine($@"[(""{filePath}"", {lineNumber})] = (EndpointFilterFactoryContext factoryContext, EndpointFilterDelegate next) =>");
             codeWriter.Indent();
-            codeWriter.WriteLine("if (result != ValidationResult.Success)");
-            codeWriter.WriteLine("{");
             codeWriter.Indent();
-            codeWriter.WriteLine("errors.Add(result.MemberNames.SingleOrDefault(), new[] { result.ErrorMessage });");
-            codeWriter.Unindent();
-            codeWriter.WriteLine("}");
-            codeWriter.Unindent();
-            codeWriter.WriteLine("}");
-            codeWriter.WriteLine("if (errors.Count > 0)");
             codeWriter.WriteLine("{");
+            codeWriter.Unindent();
+            codeWriter.Unindent();
+            codeWriter.WriteLine(filterFactoryCodeWriter.ToString());
+            codeWriter.WriteLine(filterDelegateCodeWriter.ToString());
             codeWriter.Indent();
-            codeWriter.WriteLine("return Results.ValidationProblem(errors);");
-            codeWriter.Unindent();
-            codeWriter.WriteLine("}");
-            codeWriter.WriteLine("return await next(context);");
-            codeWriter.Unindent();
+            codeWriter.Indent();
             codeWriter.WriteLine("},");
             codeWriter.Unindent();
             codeWriter.Unindent();
@@ -300,11 +343,11 @@ public class SourceGenerator : IIncrementalGenerator
              codeWriter.WriteLine(@"public static TBuilder WithValidation<TBuilder>(this TBuilder builder, [CallerFilePath] string filePath = """", [CallerLineNumber] int lineNumber = 0) where TBuilder : IEndpointConventionBuilder");
              codeWriter.WriteLine("{");
              codeWriter.Indent();
-             codeWriter.WriteLine("builder.AddEndpointFilter(Validations.Map[(filePath, lineNumber)]);");
+             codeWriter.WriteLine("builder.AddEndpointFilterFactory(Validations.Map[(filePath, lineNumber)]);");
              codeWriter.WriteLine("return builder;");
              codeWriter.Unindent();
              codeWriter.WriteLine("}");
-             codeWriter.WriteLine("public static readonly System.Collections.Generic.Dictionary<(string, int), Func<EndpointFilterInvocationContext, EndpointFilterDelegate, ValueTask<object?>>> Map = new()");
+             codeWriter.WriteLine("public static readonly System.Collections.Generic.Dictionary<(string, int), Func<EndpointFilterFactoryContext, EndpointFilterDelegate, EndpointFilterDelegate>> Map = new()");
              codeWriter.WriteLine("{");
              codeWriter.Indent();
              foreach (var generated in generatedSources)
@@ -338,25 +381,28 @@ public class SourceGenerator : IIncrementalGenerator
         return false;
     }
 
-    private List<TypeAnnotations> GetTypesWithValidatableProperties(Type type)
+    private ValidatableType GetTypesWithValidatableProperties(Type type, bool isBaseType = false)
     {
-        List<TypeAnnotations> attributedProperties = new();
+        var validatableType = new ValidatableType();
+        
         var isListType = type.GetTypeInfo().ImplementedInterfaces.Contains(typeof(IEnumerable));
         if (isListType)
         {
             type = type.GetGenericArguments().SingleOrDefault();
         }
-
+        
+        validatableType.ElementType = type;
+        
         if (type.BaseType is RoslynType baseType)
         {
-            attributedProperties.AddRange(GetTypesWithValidatableProperties(baseType));
+            validatableType.BaseTypes = new List<Type> { baseType };
         }
 
         var properties = type.GetProperties();
         foreach (var property in properties)
         {
             // Get attributes on each property and check if property implements
-            // IValidate experience
+            // IValidate interface
             if (property is RoslynPropertyInfo roslynPropertyInfo)
             {
                 var attributes = roslynPropertyInfo.PropertySymbol.GetAttributes();
@@ -368,15 +414,52 @@ public class SourceGenerator : IIncrementalGenerator
                 });
                 if (validationAttributes.Any())
                 {
-                    attributedProperties.Add(new TypeAnnotations
+                    validatableType.ValidatableProperties.Add(new ValidatableProperty()
                     {
-                        ElementType = type, Property = roslynPropertyInfo, Attributes = validationAttributes.ToList()
+                        Property = roslynPropertyInfo,
+                        Attributes = validationAttributes.ToList(),
+                    });
+                }
+
+                if (HasValidatableProperties(roslynPropertyInfo.PropertyType))
+                {
+                    validatableType.ValidatableProperties.Add(new ValidatableProperty()
+                    {
+                        Property = roslynPropertyInfo,
+                        Attributes = new(),
+                        IsOtherValidatableType = true
                     });
                 }
             }
         }
 
-        return attributedProperties;
+        return validatableType;
+    }
+
+    public bool HasValidatableProperties(Type type)
+    {
+        var properties = type.GetProperties();
+        foreach (var property in properties)
+        {
+            // Get attributes on each property and check if property implements
+            // IValidate interface
+            if (property is RoslynPropertyInfo roslynPropertyInfo)
+            {
+                var attributes = roslynPropertyInfo.PropertySymbol.GetAttributes();
+                var validationAttributes = attributes.Where(attribute =>
+                {
+                    var attributeClass = attribute.AttributeClass;
+                    var baseTypes = attributeClass.BaseTypes();
+                    return baseTypes.Any(baseType => baseType.Name.Contains("ValidationAttribute"));
+                });
+                if (validationAttributes.Any())
+                {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 
     private static IMethodSymbol ResolveMethodFromOperation(IOperation delegateArgumentOperation)
@@ -386,8 +469,7 @@ public class SourceGenerator : IIncrementalGenerator
             IArgumentOperation argument => ResolveMethodFromOperation(argument.Value),
             IConversionOperation conv => ResolveMethodFromOperation(conv.Operand),
             IDelegateCreationOperation del => ResolveMethodFromOperation(del.Target),
-            IFieldReferenceOperation f when f.Field.IsReadOnly &&
-                                            ResolveDeclarationOperation(f.Field, f.SemanticModel!) is IOperation op =>
+            IFieldReferenceOperation { Field.IsReadOnly: true } f when ResolveDeclarationOperation(f.Field, f.SemanticModel!) is IOperation op =>
                 ResolveMethodFromOperation(op),
             IAnonymousFunctionOperation anon => anon.Symbol,
             ILocalFunctionOperation local => local.Symbol,
@@ -424,16 +506,24 @@ public class SourceGenerator : IIncrementalGenerator
     }
 }
 
-public class TypeAnnotations
+public class ValidatableType
 {
     public Type ElementType { get; set; }
-    public PropertyInfo Property { get; set; }
-    public List<AttributeData> Attributes { get; set; }
 
+    public List<Type> BaseTypes { get; set; }
+
+    public List<ValidatableProperty> ValidatableProperties { get; set; } = new();
+    
     public override bool Equals(object o)
     {
-        return o is TypeAnnotations otherTypeAnnotation &&
-               otherTypeAnnotation.ElementType == ElementType &&
-               otherTypeAnnotation.Property.Name == Property.Name;
+        return o is ValidatableType otherTypeAnnotation &&
+               otherTypeAnnotation.ElementType == ElementType;
     }
+}
+
+public class ValidatableProperty
+{
+    public PropertyInfo Property { get; set; }
+    public List<AttributeData> Attributes { get; set; }
+    public bool IsOtherValidatableType { get; set; }
 }
